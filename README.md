@@ -1,4 +1,14 @@
-# Agent0 - Advanced Bug Bounty & Pentesting Cheatsheet
+<pre>
+  _______  _______  _______  _______  __   __  _______    ______   _______
+ |   _   ||       ||   _   ||       ||  | |  ||       |  |      | |       |
+ |  |_|  ||    ___||  |_|  ||    ___||  |_|  ||    ___|  |  _    ||   _   |
+ |       ||   | __ |       ||   | __ |       ||   |___   | | |   ||  | |  |
+ |       ||   ||  ||       ||   ||  ||       ||    ___|  | |_|   ||  |_|  |
+ |   _   ||   |_| ||   _   ||   |_| ||   _   ||   |___   |       ||       |
+ |__| |__||_______||__| |__||_______||__| |__||_______|  |______| |_______|
+</pre>
+
+# Advanced Bug Bounty & Pentesting Cheatsheet
 
 This repository contains a comprehensive and advanced cheatsheet for bug bounty hunting and penetration testing. It covers the entire process from reconnaissance to reporting, with a focus on advanced techniques, automation, and custom templates to stay ahead of the curve.
 
@@ -33,145 +43,9 @@ This repository contains a comprehensive and advanced cheatsheet for bug bounty 
     *   [3.17 Open Redirection](#317-open-redirection)
     *   [3.18 CORS (Cross-Origin Resource Sharing) Misconfigurations](#318-cors-cross-origin-resource-sharing-misconfigurations)
 5.  [Phase 4: Reporting & Post-Engagement](#phase-4-reporting--post-engagement)
-6.  [Phase 5: Post-Exploitation](#phase-5-post-exploitation)
-    *   [5.1 Linux Enumeration](#51-linux-enumeration)
-    *   [5.2 Windows Enumeration](#52-windows-enumeration)
-7.  [Phase 6: Mobile Application Pentesting (Android & iOS)](#phase-6-mobile-application-pentesting-android--ios)
-    *   [6.1 Setup & Core Tools](#61-setup--core-tools)
-    *   [6.2 Android Specific Tools](#62-android-specific-tools)
-    *   [6.3 iOS Specific Tools](#63-ios-specific-tools)
-8.  [Phase 7: Cloud Security Auditing & Exploitation](#phase-7-cloud-security-auditing--exploitation)
-    *   [7.1 Multi-Cloud Auditing](#71-multi-cloud-auditing)
-    *   [7.2 AWS Exploitation](#72-aws-exploitation)
-    *   [7.3 Azure Exploitation](#73-azure-exploitation)
-9.  [Essential Tools Arsenal](#essential-tools-arsenal)
-10. [Custom Nuclei Templates](#custom-nuclei-templates)
-11. [The Bug Hunter's Methodology (TBHM)](https://www.google.com/search?q=The+Bug+Hunter%27s+Methodology) - A great resource for learning the process.
-
----
-
-## Phase 7: Cloud Security Auditing & Exploitation
-
-Vulnerabilities are not just in the code, but in the infrastructure that runs it.
-
-### 7.1 Multi-Cloud Auditing
-*   **ScoutSuite:** An open source multi-cloud security-auditing tool.
-    ```bash
-    # Installation
-    pip install scoutsuite
-    # Usage (AWS)
-    scout aws
-    # Usage (Azure)
-    scout azure
-    # Usage (GCP)
-    scout gcp
-    ```
-*   **Prowler:** A command-line tool for AWS security assessment, auditing, hardening, and incident response.
-    ```bash
-    # Installation
-    pip install prowler
-    # Usage
-    prowler aws
-    ```
-
-### 7.2 AWS Exploitation
-*   **Pacu:** The AWS exploitation framework. Think Metasploit, but for AWS.
-    ```bash
-    # Installation
-    git clone https://github.com/RhinoSecurityLabs/pacu.git
-    cd pacu
-    bash install.sh
-    python3 pacu.py
-    ```
-
-### 7.3 Azure Exploitation
-*   **MicroBurst:** A collection of scripts for assessing Azure security.
-    ```bash
-    # Installation
-    git clone https://github.com/NetSPI/MicroBurst.git
-    ```
-
----
-
-## Phase 6: Mobile Application Pentesting (Android & iOS)
-
-Mobile applications are a huge attack surface. A different set of tools is required compared to web pentesting.
-
-### 6.1 Setup & Core Tools
-*   **Frida:** A dynamic instrumentation toolkit. It lets you inject scripts into black-box processes. Essential for runtime manipulation, bypassing client-side controls, and instrumentation.
-    ```bash
-    # Installation
-    pip install frida-tools
-    # On jailbroken iOS or rooted Android device: run frida-server
-    ```
-*   **Objection:** A runtime mobile exploration toolkit, powered by Frida.
-    ```bash
-    # Installation
-    pip install objection
-    # Usage
-    objection --gadget "com.example.app" explore
-    ```
-*   **MobSF (Mobile Security Framework):** An all-in-one, automated mobile app pentesting framework.
-    ```bash
-    # Installation (Docker)
-    docker pull opensecurity/mobile-security-framework-mobsf
-    docker run -it -p 8000:8000 opensecurity/mobile-security-framework-mobsf:latest
-    ```
-*   **Configuring Burp Suite:** You must proxy your mobile device's traffic through Burp to analyze API requests. This involves setting the proxy on your device and installing the Burp CA certificate.
-
-### 6.2 Android Specific Tools
-*   **apktool:** For reverse engineering Android APK files.
-    ```bash
-    # Decode an APK
-    apktool d app.apk
-    # Rebuild an APK
-    apktool b app
-    ```
-*   **jadx:** A DEX to Java decompiler. Excellent for reading the application's source code.
-    ```bash
-    # Usage (GUI)
-    jadx-gui app.apk
-    ```
-*   **Drozer:** A comprehensive security and attack framework for Android.
-    ```bash
-    # Drozer allows you to assume the role of an app and interact with the underlying OS.
-    # Find attack surface, content providers, etc.
-    ```
-
-### 6.3 iOS Specific Tools
-*   **checkra1n / unc0ver:** Jailbreaking tools are often a prerequisite for deep iOS testing.
-*   **keychain_dumper:** A tool to dump keychain contents on a jailbroken device.
-*   **Clutch:** A tool for decrypting App Store applications.
-
----
-
-## Automation & Chaining Tools
-
-Chaining tools together is key to efficient bug hunting. Here is a sample bash script to automate initial recon.
-
-```bash
-#!/bin/bash
-
-domain=$1
-echo "Starting recon on $domain"
-
-# Subdomain enumeration
-echo "[+] Enumerating subdomains..."
-subfinder -d $domain -o subdomains.txt
-assetfinder --subs-only $domain >> subdomains.txt
-amass enum -passive -d $domain >> subdomains.txt
-sort -u subdomains.txt -o all_subdomains.txt
-
-# Probing for live hosts
-echo "[+] Probing for live hosts..."
-cat all_subdomains.txt | httpx -o live_hosts.txt
-
-# Scanning with Nuclei
-echo "[+] Scanning with Nuclei..."
-nuclei -l live_hosts.txt -t /path/to/your/nuclei-templates/ -o nuclei_results.txt
-
-echo "Recon finished. Check the output files."
-```
+6.  [Essential Tools Arsenal](#essential-tools-arsenal)
+7.  [Custom Nuclei Templates](#custom-nuclei-templates)
+8.  [The Bug Hunter's Methodology (TBHM)](https://www.google.com/search?q=The+Bug+Hunter%27s+Methodology) - A great resource for learning the process.
 
 ---
 
@@ -925,101 +799,6 @@ Gaining initial access is only the beginning. These tools help with enumerating 
     powershell -ep bypass
     Import-Module ./PowerUp.ps1
     Invoke-AllChecks
-    ```
-
----
-
-## Phase 6: Mobile Application Pentesting (Android & iOS)
-
-Mobile applications are a huge attack surface. A different set of tools is required compared to web pentesting.
-
-### 6.1 Setup & Core Tools
-*   **Frida:** A dynamic instrumentation toolkit. It lets you inject scripts into black-box processes. Essential for runtime manipulation, bypassing client-side controls, and instrumentation.
-    ```bash
-    # Installation
-    pip install frida-tools
-    # On jailbroken iOS or rooted Android device: run frida-server
-    ```
-*   **Objection:** A runtime mobile exploration toolkit, powered by Frida.
-    ```bash
-    # Installation
-    pip install objection
-    # Usage
-    objection --gadget "com.example.app" explore
-    ```
-*   **MobSF (Mobile Security Framework):** An all-in-one, automated mobile app pentesting framework.
-    ```bash
-    # Installation (Docker)
-    docker pull opensecurity/mobile-security-framework-mobsf
-    docker run -it -p 8000:8000 opensecurity/mobile-security-framework-mobsf:latest
-    ```
-*   **Configuring Burp Suite:** You must proxy your mobile device's traffic through Burp to analyze API requests. This involves setting the proxy on your device and installing the Burp CA certificate.
-
-### 6.2 Android Specific Tools
-*   **apktool:** For reverse engineering Android APK files.
-    ```bash
-    # Decode an APK
-    apktool d app.apk
-    # Rebuild an APK
-    apktool b app
-    ```
-*   **jadx:** A DEX to Java decompiler. Excellent for reading the application's source code.
-    ```bash
-    # Usage (GUI)
-    jadx-gui app.apk
-    ```
-*   **Drozer:** A comprehensive security and attack framework for Android.
-    ```bash
-    # Drozer allows you to assume the role of an app and interact with the underlying OS.
-    # Find attack surface, content providers, etc.
-    ```
-
-### 6.3 iOS Specific Tools
-*   **checkra1n / unc0ver:** Jailbreaking tools are often a prerequisite for deep iOS testing.
-*   **keychain_dumper:** A tool to dump keychain contents on a jailbroken device.
-*   **Clutch:** A tool for decrypting App Store applications.
-
----
-
-## Phase 7: Cloud Security Auditing & Exploitation
-
-Vulnerabilities are not just in the code, but in the infrastructure that runs it.
-
-### 7.1 Multi-Cloud Auditing
-*   **ScoutSuite:** An open source multi-cloud security-auditing tool.
-    ```bash
-    # Installation
-    pip install scoutsuite
-    # Usage (AWS)
-    scout aws
-    # Usage (Azure)
-    scout azure
-    # Usage (GCP)
-    scout gcp
-    ```
-*   **Prowler:** A command-line tool for AWS security assessment, auditing, hardening, and incident response.
-    ```bash
-    # Installation
-    pip install prowler
-    # Usage
-    prowler aws
-    ```
-
-### 7.2 AWS Exploitation
-*   **Pacu:** The AWS exploitation framework. Think Metasploit, but for AWS.
-    ```bash
-    # Installation
-    git clone https://github.com/RhinoSecurityLabs/pacu.git
-    cd pacu
-    bash install.sh
-    python3 pacu.py
-    ```
-
-### 7.3 Azure Exploitation
-*   **MicroBurst:** A collection of scripts for assessing Azure security.
-    ```bash
-    # Installation
-    git clone https://github.com/NetSPI/MicroBurst.git
     ```
 
 ---
