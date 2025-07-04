@@ -27,6 +27,9 @@ This repository contains a comprehensive and advanced cheatsheet for bug bounty 
     *   [3.11 SSTI (Server-Side Template Injection)](#311-ssti-server-side-template-injection)
     *   [3.12 Race Conditions](#312-race-conditions)
     *   [3.13 Web Cache Poisoning](#313-web-cache-poisoning)
+    *   [3.14 HTTP Request Smuggling](#314-http-request-smuggling)
+    *   [3.15 Prototype Pollution](#315-prototype-pollution)
+    *   [3.16 Insecure Deserialization](#316-insecure-deserialization)
 5.  [Phase 4: Reporting & Post-Engagement](#phase-4-reporting--post-engagement)
 6.  [Essential Tools Arsenal](#essential-tools-arsenal)
 7.  [Custom Nuclei Templates](#custom-nuclei-templates)
@@ -67,19 +70,51 @@ Gathering information without directly interacting with the target.
 *   **GitHub Recon:**
     *   Search for the company's name or domain for leaked credentials or sensitive information.
     *   Use tools like `git-dumper` to download exposed `.git` directories.
-*   **Shodan:**
-    *   `hostname:.example.com`
-    *   `org:"Example Inc."`
-    *   `ssl:"example.com"`
+*   **Shodan/Censys/BinaryEdge:** These are search engines for devices connected to the internet.
+    *   **Shodan:**
+        *   `hostname:.example.com`
+        *   `org:"Example Inc."`
+        *   `ssl:"example.com"`
+        *   `http.favicon.hash:-335242539` (Finds Jenkins instances)
+    *   **Censys:**
+        *   `services.http.response.headers.server: "nginx" AND location.country_code: "US"`
+        *   `parsed.names: example.com`
+    *   **BinaryEdge:**
+        *   `domain:example.com`
 *   **Certificate Transparency:**
     *   [crt.sh](https://crt.sh/?q=example.com)
     *   [censys.io](https://censys.io/)
 *   **Public Datasets:**
     *   Utilize datasets like the Common Crawl to find historical data about your target.
-*   **ASN Discovery:** Find ASNs owned by the target to identify network ranges.
+*   **ASN Discovery:** Find ASNs owned by the target to identify network ranges and associated IPs.
     ```bash
+    # Get ASN from an IP
+    whois $(dig +short example.com) | grep "OriginAS"
+
+    # Get IP ranges from ASN
     whois -h whois.radb.net -- '-i origin AS12345' | grep -Eo "([0-9.]+){4}/[0-9]+"
     ```
+*   **Acquisition Recon:** Companies that have been acquired are often part of the scope. Use sources like [Crunchbase](https://www.crunchbase.com/) to identify them.
+
+*   **GitHub/GitLab Recon (Advanced):**
+    *   Use advanced search queries directly on GitHub: `"example.com" "api_key"`, `"example.com" "password"`.
+    *   **Tools for automated secret finding:**
+        *   **gitleaks:**
+            ```bash
+            # Installation
+            go install github.com/zricethezav/gitleaks/v8@latest
+
+            # Usage
+            gitleaks detect --source /path/to/repo -v
+            ```
+        *   **trufflehog:**
+            ```bash
+            # Installation
+            pip3 install trufflehog
+
+            # Usage
+            trufflehog git https://github.com/dxa4481/truffleHog.git
+            ```
 *   **Wayback Machine Analysis:** Discover old, forgotten endpoints and parameters.
     *   **Tools:**
         *   **gau (getallurls):**
@@ -128,10 +163,28 @@ Directly interacting with the target to gather more information.
         # Usage
         assetfinder --subs-only example.com > subdomains_assetfinder.txt
         ```
+    *   **DNS Permutation with `dnsgen`:**
+        ```bash
+        # Installation
+        pip3 install dnsgen
+
+        # Usage (generates permutations from your subdomains list)
+        cat all_subdomains.txt | dnsgen - > dns_permutations.txt
+        ```
     *   **Combining Tools for Maximum Coverage:**
         ```bash
         # Combine results and find unique domains
         cat subdomains*.txt | sort -u > all_subdomains.txt
+        ```
+*   **Resolving & DNS Brute-Forcing:**
+    *   A reliable resolver is crucial. Use a custom list or a tool like `puredns`.
+    *   **puredns:**
+        ```bash
+        # Installation
+        go install github.com/d3mondev/puredns/v2@latest
+
+        # Usage (resolve and validate)
+        puredns resolve all_subdomains.txt -r resolvers.txt -w resolved_hosts.txt
         ```
 *   **Resolving Subdomains & Finding Live Hosts:**
     *   **httpx:**
@@ -146,15 +199,6 @@ Directly interacting with the target to gather more information.
         ```bash
         # Installation
         go install github.com/tomnomnom/httprobe@latest
-
-        # Usage
-        cat all_subdomains.txt | httprobe > live_hosts_probe.txt
-        ```
-*   **Visual Reconnaissance:**
-    *   **gowitness:**
-        ```bash
-        # Installation
-        go install github.com/sensepost/gowitness@latest
 
         # Usage
         cat live_hosts.txt | gowitness file -f - --screenshot-path screenshots/
@@ -184,6 +228,25 @@ Directly interacting with the target to gather more information.
         # Usage - Scan a list of IPs for top ports
         masscan -p80,443,8080 -iL ip_list.txt
         ```
+*   **Cloud Reconnaissance:**
+    *   Many assets are hosted in the cloud. Look for storage buckets, cloud functions, etc.
+    *   **Tools:**
+        *   **Cloud enum:**
+            ```bash
+            # Installation
+            pip3 install cloud-enum
+
+            # Usage
+            cloud_enum -k example
+            ```
+        *   **S3Scanner:**
+            ```bash
+            # Installation
+            pip3 install s3scanner
+
+            # Usage
+            s3scanner -d bucket-list.txt
+            ```
 ---
 
 ## Phase 2: Scanning & Enumeration
@@ -228,6 +291,23 @@ Now that we have a list of live hosts and open ports, we can start looking for l
     *   **Advanced `ffuf` usage:**
         *   Recursive scan: `ffuf -w wordlist.txt -u https://example.com/FUZZ -recursion`
         *   Filter results: `ffuf -w wordlist.txt -u https://example.com/FUZZ -fs <size>`
+*   **Web Crawling to Find Endpoints:**
+    *   **gospider:**
+        ```bash
+        # Installation
+        go install github.com/jaeles-project/gospider@latest
+
+        # Usage
+        gospider -s "https://example.com" -o output -c 10 -d 5 --other-source
+        ```
+    *   **hakrawler:**
+        ```bash
+        # Installation
+        go install github.com/hakluke/hakrawler@latest
+
+        # Usage
+        cat live_hosts.txt | hakrawler -d 2 -u
+        ```
 *   **JavaScript File Analysis:**
     *   JavaScript files often contain hidden API endpoints, credentials, and logic.
     *   **Tools:**
@@ -239,6 +319,15 @@ Now that we have a list of live hosts and open ports, we can start looking for l
 
             # Usage
             python3 linkfinder.py -i https://example.com/main.js -o cli
+            ```
+        *   **secretfinder:**
+            ```bash
+            # Installation
+            git clone https://github.com/m4ll0k/SecretFinder.git
+            pip3 install -r requirements.txt
+
+            # Usage
+            python3 SecretFinder.py -i https://example.com/main.js -o cli
             ```
         *   **JSScanner:**
             ```bash
@@ -397,6 +486,28 @@ Automation can only get you so far. This is where your skills come into play. Al
     *   If the response is cached, subsequent users will receive the poisoned version.
     *   **Tool:** "Param Miner" Burp Suite extension is excellent for this.
 
+### 3.14 HTTP Request Smuggling
+*   This vulnerability arises when the frontend (e.g., a load balancer) and the backend server interpret the boundary of an HTTP request differently.
+*   **Testing:**
+    *   Use Burp Suite's "HTTP Request Smuggler" extension.
+    *   Look for differences in how `Content-Length` and `Transfer-Encoding` headers are handled.
+*   **Impact:** Can lead to cache poisoning, session hijacking, and bypassing security controls.
+
+### 3.15 Prototype Pollution
+*   A JavaScript vulnerability where an attacker can modify an object's prototype. This can lead to arbitrary code execution or denial of service.
+*   **Testing:**
+    *   Look for unsafe recursive merge functions in JavaScript code.
+    *   Inject payloads like `?__proto__[polluted]=true`.
+    *   **Tools:**
+        *   **pp-finder:** A Burp Suite extension to find prototype pollution.
+
+### 3.16 Insecure Deserialization
+*   This occurs when an application deserializes untrusted user input without proper validation, leading to remote code execution.
+*   **Languages & Tools:**
+    *   **Java:** Look for serialized objects in HTTP requests (often starting with `ac ed 00 05`). Use the `ysoserial` tool to generate payloads.
+    *   **PHP:** Look for calls to `unserialize()`. Use `PHPGGC` to generate payloads.
+    *   **Python:** Look for `pickle.load()`.
+
 ---
 
 ## Phase 4: Reporting & Post-Engagement
@@ -496,6 +607,16 @@ echo "Recon finished. Check the output files."
 
 ---
 
+## Wordlists and Payloads
+
+Having high-quality wordlists for fuzzing, brute-forcing, and content discovery is essential.
+
+*   **[SecLists](https://github.com/danielmiessler/SecLists):** The absolute gold standard for security testing wordlists.
+*   **[fuzz.txt](https://github.com/Bo0oM/fuzz.txt):** A massive collection of payloads for various vulnerability types.
+*   **[PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings):** A comprehensive list of payloads and bypasses for a huge range of vulnerabilities.
+
+---
+
 ## Essential Tools Arsenal
 
 A list of must-have tools.
@@ -513,6 +634,13 @@ A list of must-have tools.
 | Arjun       | Parameter Discovery       | `pip3 install arjun`                       |
 | gowitness   | Visual Recon              | `go install ...`                           |
 | Amass       | Subdomain Enumeration     | `go install -v ...`                        |
+| gitleaks    | Secret Scanner            | `go install ...`                           |
+| trufflehog  | Secret Scanner            | `pip3 install trufflehog`                  |
+| dnsgen      | DNS Permutation           | `pip3 install dnsgen`                      |
+| puredns     | DNS Resolver              | `go install ...`                           |
+| cloud-enum  | Cloud Enumeration         | `pip3 install cloud-enum`                  |
+| gospider    | Web Crawler               | `go install ...`                           |
+| hakrawler   | Web Crawler               | `go install ...`                           |
 
 ---
 
@@ -631,5 +759,34 @@ http:
         words:
           - "Contact:"
           - "Expires:"
+        condition: and
+```
+
+### Apache Server Status Exposure
+
+```yaml
+id: apache-server-status
+
+info:
+  name: Apache Server Status Exposed
+  author: YourName
+  severity: medium
+  description: Apache server-status page is publicly accessible, leaking sensitive information.
+  tags: config,exposure,apache
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/server-status"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "Apache Server Status for"
+          - "Server Uptime"
         condition: and
 ``` 
