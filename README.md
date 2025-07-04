@@ -1,3 +1,13 @@
+<pre>
+  _______  _______  _______  _______  __   __  _______    ______   _______
+ |   _   ||       ||   _   ||       ||  | |  ||       |  |      | |       |
+ |  |_|  ||    ___||  |_|  ||    ___||  |_|  ||    ___|  |  _    ||   _   |
+ |       ||   | __ |       ||   | __ |       ||   |___   | | |   ||  | |  |
+ |       ||   ||  ||       ||   ||  ||       ||    ___|  | |_|   ||  |_|  |
+ |   _   ||   |_| ||   _   ||   |_| ||   _   ||   |___   |       ||       |
+ |__| |__||_______||__| |__||_______||__| |__||_______|  |______| |_______|
+</pre>
+
 # Advanced Bug Bounty & Pentesting Cheatsheet
 
 This repository contains a comprehensive and advanced cheatsheet for bug bounty hunting and penetration testing. It covers the entire process from reconnaissance to reporting, with a focus on advanced techniques, automation, and custom templates to stay ahead of the curve.
@@ -806,6 +816,7 @@ echo "Recon finished. Check the output files."
     *   DEF CON
     *   Black Hat
     *   AppSec EU/USA
+*   [The Bug Hunter's Methodology (TBHM)](https://www.google.com/search?q=The+Bug+Hunter%27s+Methodology) - A great resource for learning the process.
 
 ---
 
@@ -813,9 +824,37 @@ echo "Recon finished. Check the output files."
 
 Having high-quality wordlists for fuzzing, brute-forcing, and content discovery is essential.
 
-*   **[SecLists](https://github.com/danielmiessler/SecLists):** The absolute gold standard for security testing wordlists.
-*   **[fuzz.txt](https://github.com/Bo0oM/fuzz.txt):** A massive collection of payloads for various vulnerability types.
-*   **[PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings):** A comprehensive list of payloads and bypasses for a huge range of vulnerabilities.
+*   **General Purpose:**
+    *   [SecLists](https://github.com/danielmiessler/SecLists): The absolute gold standard for security testing wordlists.
+    *   [fuzz.txt](https://github.com/Bo0oM/fuzz.txt): A massive collection of payloads for various vulnerability types.
+    *   [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings): A comprehensive list of payloads and bypasses for a huge range of vulnerabilities.
+*   **Specialized Wordlists:**
+    *   [Assetnote's Wordlists](https://wordlists.assetnote.io/): High-quality wordlists for content, discovery, and fuzzing from the pros at Assetnote.
+    *   [fuzz4bounty](https://github.com/0xPugal/fuzz4bounty): A great collection of wordlists specifically curated for bug bounty hunting.
+    *   [IntruderPayloads](https://github.com/1N3/IntruderPayloads): A collection of Burp Suite Intruder payloads for various attack types.
+*   **GraphQL:**
+    *   Use `clairvoyance` to generate target-specific wordlists from a GraphQL schema.
+*   **Prototype Pollution:**
+    *   [Prototype-Pollution-Gadgets](https://github.com/kleiton0x00/Prototype-Pollution-Gadgets): A list of known gadgets for prototype pollution.
+
+---
+
+## Bug Bounty One-Liners
+
+Quick, powerful command chains to get results fast.
+
+*   **Full Recon Chain (Subdomains, Live Hosts, Scanning):**
+    ```bash
+    subfinder -d example.com -silent | httpx -silent | nuclei -silent -t /path/to/templates/ -o results.txt
+    ```
+*   **Find JavaScript files and scan for secrets:**
+    ```bash
+    cat domains.txt | gau | grep '\.js$' | httpx -status-code -mc 200 -content-type | grep 'application/javascript' | awk '{print $1}' | xargs -I@ bash -c 'python3 secretfinder.py -i @ -o cli'
+    ```
+*   **Crawl for params and test for XSS:**
+    ```bash
+    gau example.com | gf xss | kxss
+    ```
 
 ---
 
@@ -1020,4 +1059,23 @@ http:
     ```bash
     # Run takeover templates specifically
     nuclei -l all_subdomains.txt -t takeovers/
-    ``` 
+    ```
+
+### JWT (JSON Web Token) Vulnerabilities
+
+*   **Automated JWT Scanners:**
+    *   **jwt_tool:** A powerful toolkit for testing, tweaking, and cracking JWTs.
+        ```bash
+        # Installation
+        git clone https://github.com/ticarpi/jwt_tool.git
+        cd jwt_tool
+        python3 -m venv venv
+        source venv/bin/activate
+        pip3 install -r requirements.txt
+
+        # Usage - Check for common misconfigurations
+        python3 jwt_tool.py eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c -M at
+
+        # Crack a weak secret
+        python3 jwt_tool.py eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c -C /path/to/wordlist.txt
+        ``` 
